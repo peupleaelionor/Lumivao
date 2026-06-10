@@ -1,0 +1,8 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LUMIVAO">
+  <!-- Carré ouvert = la vitrine / le support -->
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="#121212"/>
+  <!-- L construit comme une carte verticale -->
+  <path d="M23 18V40H38" stroke="#F7F3EC" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Coin actif vert = scan / publication / disponibilité -->
+  <rect x="38" y="38" width="9" height="9" rx="2.5" fill="#18C26E"/>
+</svg>

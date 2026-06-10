@@ -1,0 +1,154 @@
+// LUMIVAO — schéma Prisma (PostgreSQL / Supabase)
+// Génère le client : npm run prisma:generate
+// Pousse le schéma : npm run prisma:push
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id           String   @id @default(uuid())
+  ownerId      String?  @map("owner_id")
+  name         String
+  slug         String   @unique
+  type         String
+  logoUrl      String?  @map("logo_url")
+  phone        String?
+  whatsapp     String?
+  address      String?
+  city         String?
+  country      String?
+  colors       Json?
+  openingHours String?  @map("opening_hours")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  products  Product[]
+  offers    Offer[]
+  customers Customer[]
+  loyalty   LoyaltyRule[]
+
+  @@map("businesses")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  businessId    String   @map("business_id")
+  name          String
+  description   String?
+  category      String?
+  price         Decimal?
+  oldPrice      Decimal? @map("old_price")
+  imageUrl      String?  @map("image_url")
+  active        Boolean  @default(true)
+  stockQuantity Int?     @map("stock_quantity")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  offers   Offer[]
+
+  @@index([businessId])
+  @@map("products")
+}
+
+model Offer {
+  id          String    @id @default(uuid())
+  businessId  String    @map("business_id")
+  productId   String?   @map("product_id")
+  title       String
+  description String?
+  oldPrice    Decimal?  @map("old_price")
+  newPrice    Decimal?  @map("new_price")
+  goal        String?
+  channel     String?
+  status      String    @default("draft")
+  startsAt    DateTime? @map("starts_at")
+  endsAt      DateTime? @map("ends_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  business Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  assets   CampaignAsset[]
+
+  @@index([businessId])
+  @@map("offers")
+}
+
+model CampaignAsset {
+  id        String   @id @default(uuid())
+  offerId   String   @map("offer_id")
+  type      String
+  format    String?
+  content   String?
+  imageUrl  String?  @map("image_url")
+  qrUrl     String?  @map("qr_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+  @@map("campaign_assets")
+}
+
+model Customer {
+  id          String    @id @default(uuid())
+  businessId  String    @map("business_id")
+  name        String
+  phone       String?
+  points      Int       @default(0)
+  lastVisitAt DateTime? @map("last_visit_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("customers")
+}
+
+model LoyaltyRule {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  ruleType   String   @map("rule_type")
+  threshold  Int
+  reward     String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("loyalty_rules")
+}
+
+model QrEvent {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  offerId    String?  @map("offer_id")
+  type       String
+  userAgent  String?  @map("user_agent")
+  ipHash     String?  @map("ip_hash")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([businessId])
+  @@map("qr_events")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  offerId    String?  @map("offer_id")
+  eventType  String   @map("event_type")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([businessId])
+  @@map("analytics_events")
+}
