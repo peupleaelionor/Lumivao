@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import {
   getBusiness,
   getCustomers,
@@ -20,28 +20,23 @@ function subscribe(callback: () => void): () => void {
   };
 }
 
-function useStore<T>(getSnapshot: () => T, serverSnapshot: T): T {
-  return useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
-}
+// Références serveur stables (pas de nouvelle allocation par rendu).
+const EMPTY_ARRAY: never[] = [];
+const serverNull = () => null;
+const serverEmpty = () => EMPTY_ARRAY;
 
 export function useBusiness(): Business | null {
-  return useStore<Business | null>(getBusiness, null);
+  return useSyncExternalStore(subscribe, getBusiness, serverNull);
 }
 
 export function useProducts(): Product[] {
-  return useStore<Product[]>(getProducts, []);
+  return useSyncExternalStore(subscribe, getProducts, serverEmpty);
 }
 
 export function useOffers(): Offer[] {
-  return useStore<Offer[]>(getOffers, []);
+  return useSyncExternalStore(subscribe, getOffers, serverEmpty);
 }
 
 export function useCustomers(): Customer[] {
-  return useStore<Customer[]>(getCustomers, []);
-}
-
-/** Force un re-render quand le magasin change (utilitaire). */
-export function useStoreSync(): void {
-  const noop = useCallback(() => {}, []);
-  useEffect(() => subscribe(noop), [noop]);
+  return useSyncExternalStore(subscribe, getCustomers, serverEmpty);
 }

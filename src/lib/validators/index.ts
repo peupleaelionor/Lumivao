@@ -13,32 +13,57 @@ export const businessTypeSchema = z.enum([
   "bazar",
 ]);
 
-export const aiOfferInputSchema = z.object({
+export const advisorObjectiveSchema = z.enum([
+  "sell_today",
+  "clear_stock",
+  "increase_basket",
+  "bring_back_customers",
+  "fill_empty_slot",
+  "get_reviews",
+  "build_loyalty",
+]);
+
+export const advisorInputSchema = z.object({
   businessType: businessTypeSchema,
   businessName: z.string().min(1, "Le nom du commerce est requis.").max(80),
+  city: z.string().max(60).optional(),
   products: z
-    .array(
-      z.object({
-        name: z.string().max(80),
-        price: z.number().nonnegative().optional(),
-      }),
-    )
+    .array(z.object({ name: z.string().max(80), price: z.number().nonnegative().optional() }))
     .max(50)
     .optional()
     .default([]),
-  intention: z
-    .string()
-    .min(3, "Le texte de l'offre est trop court.")
-    .max(500, "Le texte est trop long."),
-  timeOfDay: z.string().max(20).optional(),
-  objective: z
-    .enum(["sell_today", "destock", "new_product", "loyalty"])
-    .optional()
-    .default("sell_today"),
+  customersCount: z.number().int().nonnegative().max(100000).optional().default(0),
+  intention: z.string().max(500).optional().default(""),
+  timeOfDay: z.enum(["matin", "midi", "apres_midi", "soir"]).optional(),
+  dayOfWeek: z.string().max(20).optional(),
+  objective: advisorObjectiveSchema.optional().default("sell_today"),
   language: z.string().max(5).optional().default("fr"),
 });
 
-export type AiOfferInput = z.infer<typeof aiOfferInputSchema>;
+export type AdvisorInput = z.infer<typeof advisorInputSchema>;
+
+export const offerEngineInputSchema = z.object({
+  businessType: businessTypeSchema,
+  businessName: z.string().min(1, "Le nom du commerce est requis.").max(80),
+  city: z.string().max(60).optional(),
+  intention: z
+    .string()
+    .max(500, "La situation est trop longue.")
+    .optional()
+    .default(""),
+  products: z
+    .array(z.object({ name: z.string().max(80), price: z.number().nonnegative().optional() }))
+    .max(50)
+    .optional()
+    .default([]),
+  timeOfDay: z.enum(["matin", "midi", "apres_midi", "soir"]).optional(),
+  dayOfWeek: z.string().max(20).optional(),
+  objective: advisorObjectiveSchema.optional().default("sell_today"),
+  averageBasket: z.number().nonnegative().max(100000).nullable().optional(),
+  language: z.string().max(5).optional().default("fr"),
+});
+
+export type OfferEngineInput = z.infer<typeof offerEngineInputSchema>;
 
 export const flyerInputSchema = z.object({
   businessName: z.string().min(1).max(80),

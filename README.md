@@ -108,7 +108,8 @@ src/
         public/[slug]/            # mini-vitrine publique
         tv/[businessId]/          # affichage TV
     api/
-      ai/offer/                   # génération 3 offres (+ repli local)
+      ai/offer-engine/            # moteur d'offres : 3 offres scorées + reco (repli local)
+      ai/advisor/                 # conseiller « Conseil du jour » (repli local)
       flyer/generate/  qr/  whatsapp/message/  public/business/
   components/  ui/ layout/ landing/ offers/ products/ flyers/ qr/ public/
   lib/        ai/ autopilot/ qr/ whatsapp/ validators/ store/ supabase/ utils.ts
@@ -118,10 +119,13 @@ prisma/schema.prisma
 supabase/schema.sql
 ```
 
-### Le cœur « invisible » — `src/lib/ai/`
-`generateOffers()` tente OpenAI (JSON strict, prompt commercial sans jargon).
-En cas d'absence de clé / quota / panne / réponse invalide → repli sur
-`buildLocalOffers()` (modèles par métier). **Le flux ne casse jamais.**
+### Le moteur d'offres « invisible » — `src/lib/ai/` + `src/lib/offers/`
+`runOfferEngine()` : valide (Zod) → enrichit avec les règles métier
+(`data/offer-rules.ts`) → OpenAI (JSON strict) → **score chaque offre /100**
+(`lib/offers/offer-score.ts`) → recommande la meilleure → repli local garanti
+(`data/templates/precise-offer-templates.ts`). Chaque situation produit 3 offres :
+**marge protégée / vente rapide / panier premium**. Le flux ne casse jamais.
+`generateAdvice()` alimente le « Conseil du jour » (diagnostic + action).
 
 ### LUMIVAO Autopilot — `src/lib/autopilot/`
 Propose chaque jour **3 actions** adaptées au type de commerce (menu midi,

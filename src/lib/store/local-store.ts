@@ -15,19 +15,39 @@ const KEYS = {
   customers: "lumivao.customers",
 } as const;
 
+// Constantes stables : indispensables pour useSyncExternalStore (mêmes
+// références tant que la donnée ne change pas → pas de re-render en boucle).
+const EMPTY_ARRAY: never[] = [];
+
+// Cache des snapshots, invalidé seulement quand le contenu brut change.
+const snapshotCache = new Map<string, { raw: string | null; value: unknown }>();
+
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
+  let raw: string | null;
   try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    raw = window.localStorage.getItem(key);
   } catch {
     return fallback;
   }
+  const cached = snapshotCache.get(key);
+  if (cached && cached.raw === raw) return cached.value as T;
+  let value: T;
+  try {
+    value = raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    value = fallback;
+  }
+  snapshotCache.set(key, { raw, value });
+  return value;
 }
 
 function write<T>(key: string, value: T): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
+  const raw = JSON.stringify(value);
+  window.localStorage.setItem(key, raw);
+  // Met le cache à jour immédiatement pour garder des références stables.
+  snapshotCache.set(key, { raw, value });
   window.dispatchEvent(new CustomEvent("lumivao:change"));
 }
 
@@ -52,7 +72,7 @@ export function saveBusiness(
 
 // ── Products ─────────────────────────────────────────────────────────
 export function getProducts(): Product[] {
-  return read<Product[]>(KEYS.products, []);
+  return read<Product[]>(KEYS.products, EMPTY_ARRAY);
 }
 
 export function addProduct(
@@ -86,7 +106,7 @@ export function removeProduct(id: string): void {
 
 // ── Offers ───────────────────────────────────────────────────────────
 export function getOffers(): Offer[] {
-  return read<Offer[]>(KEYS.offers, []);
+  return read<Offer[]>(KEYS.offers, EMPTY_ARRAY);
 }
 
 export function saveOffer(
@@ -109,7 +129,7 @@ export function getLatestPublishedOffer(): Offer | null {
 
 // ── Customers ────────────────────────────────────────────────────────
 export function getCustomers(): Customer[] {
-  return read<Customer[]>(KEYS.customers, []);
+  return read<Customer[]>(KEYS.customers, EMPTY_ARRAY);
 }
 
 export function addCustomer(

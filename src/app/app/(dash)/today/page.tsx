@@ -5,9 +5,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useBusiness, useProducts } from "@/lib/store/use-store";
 import { saveOffer } from "@/lib/store/local-store";
 import { getBusinessType } from "@/data/business-types";
+import { STRATEGY_LABEL } from "@/lib/offers/offer-score";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
-import { cn, slugify } from "@/lib/utils";
-import type { AiOfferResponse, GeneratedOffer } from "@/types";
+import { cn } from "@/lib/utils";
+import type {
+  AdvisorObjective,
+  EngineBadge,
+  EngineOffer,
+  EngineStrategy,
+  OfferEngineResponse,
+  OfferToneKey,
+} from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Textarea";
@@ -16,16 +24,29 @@ import { LoadingState, SuccessMessage } from "@/components/ui/States";
 import { FlyerPreview } from "@/components/flyers/FlyerPreview";
 import { QRBlock } from "@/components/qr/QRBlock";
 
-const TONE_LABEL: Record<GeneratedOffer["type"], string> = {
-  prudent: "Prudente",
-  aggressive: "Agressive",
-  premium: "Premium",
+const BADGE_TONE: Record<EngineBadge, "published" | "new" | "draft"> = {
+  Recommandée: "published",
+  Solide: "new",
+  "À ajuster": "draft",
+};
+
+const STRATEGY_TONE: Record<EngineStrategy, OfferToneKey> = {
+  marge_protegee: "prudent",
+  vente_rapide: "aggressive",
+  panier_premium: "premium",
 };
 
 function parsePrice(text: string): number | null {
   const m = text.match(/(\d+[.,]?\d*)/);
-  if (!m) return null;
-  return Number.parseFloat(m[1]!.replace(",", "."));
+  return m ? Number.parseFloat(m[1]!.replace(",", ".")) : null;
+}
+
+function currentTimeOfDay(): "matin" | "midi" | "apres_midi" | "soir" {
+  const h = new Date().getHours();
+  if (h < 11) return "matin";
+  if (h < 14) return "midi";
+  if (h < 18) return "apres_midi";
+  return "soir";
 }
 
 function TodayInner() {
@@ -34,50 +55,45 @@ function TodayInner() {
   const business = useBusiness();
   const products = useProducts();
 
-  const [intention, setIntention] = useState(params.get("intention") ?? "");
+  const [situation, setSituation] = useState(params.get("intention") ?? "");
+  const objective = (params.get("objective") as AdvisorObjective | null) ?? "sell_today";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AiOfferResponse | null>(null);
-  const [selected, setSelected] = useState<GeneratedOffer | null>(null);
+  const [result, setResult] = useState<OfferEngineResponse | null>(null);
+  const [selected, setSelected] = useState<EngineOffer | null>(null);
   const [published, setPublished] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (params.get("intention") && intention && !result) {
-      void generate();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const appUrl = useMemo(
-    () => (typeof window !== "undefined" ? window.location.origin : ""),
-    [],
-  );
+  const appUrl = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
   const publicUrl = business ? `${appUrl}/app/public/${business.slug}` : "";
 
   async function generate() {
-    if (!business || intention.trim().length < 3) return;
+    if (!business || (situation.trim().length === 0 && !params.get("intention"))) {
+      if (!business) return;
+    }
+    if (!business) return;
     setLoading(true);
     setError(null);
     setResult(null);
     setSelected(null);
     setPublished(false);
     try {
-      const res = await fetch("/api/ai/offer", {
+      const res = await fetch("/api/ai/offer-engine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           businessType: business.type,
           businessName: business.name,
+          city: business.city ?? undefined,
+          intention: situation.trim(),
           products: products.map((p) => ({ name: p.name, price: p.price ?? undefined })),
-          intention: intention.trim(),
-          objective: "sell_today",
-          language: "fr",
+          objective,
+          timeOfDay: currentTimeOfDay(),
         }),
       });
-      const data = (await res.json()) as AiOfferResponse | { error: string };
+      const data = (await res.json()) as OfferEngineResponse | { error: string };
       if (!res.ok || !("offers" in data)) {
-        setError(("error" in data && data.error) || "Impossible de préparer l'offre.");
+        setError(("error" in data && data.error) || "Impossible de préparer les offres.");
         return;
       }
       setResult(data);
@@ -88,20 +104,25 @@ function TodayInner() {
     }
   }
 
-  function publish(offer: GeneratedOffer) {
+  // Auto-lance si une intention/objectif arrive depuis l'accueil.
+  useEffect(() => {
+    if (params.get("intention") || params.get("objective")) void generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function publish(offer: EngineOffer) {
     if (!business) return;
-    const newPrice = parsePrice(offer.suggestedPrice);
     saveOffer({
       businessId: business.id,
       productId: null,
-      title: offer.title,
-      description: offer.shortText,
-      newPrice,
+      title: offer.name,
+      description: offer.reason,
+      newPrice: parsePrice(offer.price),
       oldPrice: null,
       goal: "sell_today",
       channel: "whatsapp",
       status: "published",
-      tone: offer.type,
+      tone: STRATEGY_TONE[offer.strategy],
       whatsappMessage: offer.whatsappMessage,
       flyerHeadline: offer.flyerHeadline,
       cta: offer.cta,
@@ -121,64 +142,83 @@ function TodayInner() {
   }
 
   const typeDef = getBusinessType(business.type);
-  const waLink = selected
-    ? buildWhatsAppLink(business.whatsapp || "", selected.whatsappMessage)
-    : "";
+  const waLink = selected ? buildWhatsAppLink(business.whatsapp || "", selected.whatsappMessage) : "";
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <header>
-        <h1 className="font-display text-2xl font-semibold">Offre du jour</h1>
+        <h1 className="font-display text-2xl font-semibold">Nouvelle action commerciale</h1>
         <p className="mt-1 text-[0.9375rem] text-ink-soft">
-          Décrivez votre offre. Nous préparons vos supports.
+          Dites votre situation. Lumivao propose la meilleure offre.
         </p>
       </header>
 
       <Card className="bg-surface">
         <Textarea
-          label="Décrivez votre offre"
-          value={intention}
-          onChange={(e) => setIntention(e.target.value)}
-          placeholder={`Ex : ${typeDef.examples[0]}`}
+          label="Votre situation"
+          value={situation}
+          onChange={(e) => setSituation(e.target.value)}
+          placeholder={`Ex : ${typeDef.examples[0]}  ·  « J'ai trop de boissons aujourd'hui »`}
         />
-        <Button className="mt-4" block onClick={generate} disabled={loading || intention.trim().length < 3}>
-          {loading ? "Préparation…" : "Préparer mes supports"}
+        <Button className="mt-4" block onClick={generate} disabled={loading}>
+          {loading ? "Recherche de la bonne offre…" : "Trouver la bonne offre"}
         </Button>
         {error && (
           <p className="mt-3 rounded bg-orange-tint px-3 py-2 text-sm text-orange-dense">{error}</p>
         )}
       </Card>
 
-      {loading && <LoadingState />}
+      {loading && <LoadingState label="Préparation de vos supports…" />}
 
-      {/* 3 offres proposées */}
+      {/* 3 offres précises */}
       {result && !selected && (
         <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-semibold">Choisissez une offre</h2>
-            {result.source === "local" && (
-              <span className="text-xs text-ink-soft">Mode hors-ligne</span>
-            )}
+          <div>
+            <h2 className="font-display text-lg font-semibold">
+              Voici les meilleures offres pour aujourd&apos;hui
+            </h2>
+            <p className="text-[0.9375rem] text-ink-soft">
+              Choisissez une option. Lumivao prépare les supports.
+            </p>
           </div>
-          {result.offers.map((o) => (
-            <Card key={o.type} interactive onClick={() => setSelected(o)} className="bg-surface">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="font-display font-semibold">{o.title}</h3>
-                <Badge tone={o.type === "premium" ? "promo" : o.type === "aggressive" ? "new" : "neutral"}>
-                  {TONE_LABEL[o.type]}
-                </Badge>
-              </div>
-              <p className="mt-1.5 text-[0.9375rem] text-ink-soft">{o.shortText}</p>
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="font-semibold text-orange-dense">{o.suggestedPrice}</span>
-                <span className="text-ink-soft">{o.reason}</span>
-              </div>
-            </Card>
-          ))}
+          {result.offers.map((o, i) => {
+            const recommended = i + 1 === result.recommendedOfferRank;
+            return (
+              <Card
+                key={o.strategy}
+                interactive
+                onClick={() => setSelected(o)}
+                className={cn("bg-surface", recommended && "border-green/40")}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                    {STRATEGY_LABEL[o.strategy]}
+                  </span>
+                  <Badge tone={recommended ? "published" : BADGE_TONE[o.badge]}>
+                    {recommended
+                      ? "Meilleure option aujourd'hui"
+                      : o.badge === "Recommandée"
+                        ? "Solide"
+                        : o.badge}
+                  </Badge>
+                </div>
+                <h3 className="mt-1.5 font-display font-semibold leading-snug">{o.name}</h3>
+                <div className="mt-2 grid gap-1 text-[0.8125rem] text-ink-soft">
+                  <p className="text-base font-semibold text-orange-dense">{o.price}</p>
+                  <p>🎯 {o.target}</p>
+                  <p>📣 {o.channel}{o.bestTime ? ` · ${o.bestTime}` : ""}</p>
+                  {o.reason && <p>💬 {o.reason}</p>}
+                </div>
+                <Button className="mt-3" variant={recommended ? "primary" : "secondary"} block>
+                  Préparer cette offre
+                </Button>
+              </Card>
+            );
+          })}
         </section>
       )}
 
-      {/* Supports prêts pour l'offre sélectionnée */}
+      {/* Supports de l'offre choisie */}
       {selected && (
         <section className="flex flex-col gap-5">
           {published ? (
@@ -192,19 +232,24 @@ function TodayInner() {
             </div>
           )}
 
+          {selected.marginAdvice && (
+            <p className="rounded bg-cream px-3 py-2 text-sm text-ink-soft">
+              💡 {selected.marginAdvice}
+            </p>
+          )}
+
           <FlyerPreview
             data={{
               businessName: business.name,
               headline: selected.flyerHeadline,
-              description: selected.shortText,
-              price: selected.suggestedPrice,
+              description: selected.reason,
+              price: selected.price,
               cta: selected.cta,
               qrData: publicUrl,
             }}
             format="square"
           />
 
-          {/* Message WhatsApp */}
           <Card className="bg-surface">
             <h3 className="font-medium">Message WhatsApp</h3>
             <p className="mt-2 whitespace-pre-line rounded border border-line bg-cream p-3 text-sm">
@@ -229,7 +274,6 @@ function TodayInner() {
             </div>
           </Card>
 
-          {/* QR + mini-page */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="flex flex-col items-center gap-3 bg-surface">
               <h3 className="self-start font-medium">QR code commande</h3>
@@ -237,12 +281,9 @@ function TodayInner() {
             </Card>
             <Card className="flex flex-col gap-3 bg-surface">
               <h3 className="font-medium">Mini-vitrine</h3>
-              <p className="text-sm text-ink-soft break-all">{publicUrl}</p>
+              <p className="break-all text-sm text-ink-soft">{publicUrl}</p>
               <div className="mt-auto flex flex-col gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => navigator.clipboard.writeText(publicUrl)}
-                >
+                <Button variant="secondary" onClick={() => navigator.clipboard.writeText(publicUrl)}>
                   Copier le lien
                 </Button>
                 <a href={`/app/public/${business.slug}`} target="_blank" rel="noopener noreferrer">
@@ -254,12 +295,11 @@ function TodayInner() {
             </Card>
           </div>
 
-          {!published && (
+          {!published ? (
             <Button block onClick={() => publish(selected)}>
               Publier maintenant
             </Button>
-          )}
-          {published && (
+          ) : (
             <div className="flex gap-2">
               <Button variant="secondary" block onClick={() => router.push("/app/flyers")}>
                 Voir mes offres

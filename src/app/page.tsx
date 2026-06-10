@@ -76,8 +76,8 @@ export default function LandingPage() {
               Vendez plus chaque jour, même sans site.
             </h1>
             <p className="mt-5 max-w-xl text-[clamp(1.0625rem,1.6vw,1.25rem)] leading-relaxed text-ink-soft">
-              LUMIVAO transforme une simple offre en flyer, QR code, message WhatsApp, menu et
-              mini-vitrine en moins d&apos;une minute.
+              Lumivao trouve la bonne offre à publier aujourd&apos;hui, puis prépare le flyer, le QR
+              code, le message WhatsApp et la mini-vitrine.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <LinkButton href="/app/onboarding" size="lg">
@@ -92,6 +92,67 @@ export default function LandingPage() {
             </p>
           </div>
           <PhoneMockup />
+        </div>
+      </section>
+
+      {/* Positionnement : moteur d'offres */}
+      <section className="border-t border-line bg-surface/40">
+        <div className="mx-auto max-w-content px-5 py-20">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wide text-green-dense">
+              Le moteur d&apos;offres
+            </p>
+            <h2 className="mt-3 font-display text-[clamp(1.75rem,4vw,2.5rem)] font-semibold leading-tight">
+              Ne publiez plus des promos au hasard.
+            </h2>
+            <p className="mt-4 text-[1.0625rem] text-ink-soft">
+              Lumivao vous aide à choisir entre une offre qui protège votre marge, une offre qui
+              vend vite et une offre qui augmente le panier moyen.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {[
+              { t: "Protège votre marge", d: "Des packs et bonus malins plutôt que des remises qui cassent vos prix." },
+              { t: "Vend vite", d: "Une offre horaire claire qui déclenche la décision aujourd'hui." },
+              { t: "Augmente le panier", d: "Des formules et duos pour vendre plus à chaque client." },
+            ].map((c) => (
+              <div key={c.t} className="rounded-lg border border-line bg-surface p-6">
+                <h3 className="text-[1.1875rem] font-semibold">{c.t}</h3>
+                <p className="mt-2 text-[0.9375rem] text-ink-soft">{c.d}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Démonstration concrète */}
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg border border-line bg-surface p-6">
+              <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-ink-soft">
+                Votre situation
+              </p>
+              <div className="mt-4 rounded border border-dashed border-line bg-cream p-4 font-medium">
+                « J&apos;ai trop de boissons aujourd&apos;hui. »
+              </div>
+            </div>
+            <div className="rounded-lg border border-ink bg-ink p-6 text-cream">
+              <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-cream/60">
+                Lumivao propose
+              </p>
+              <ul className="mt-4 grid gap-2.5 text-[0.9375rem]">
+                {["Lot de 3 boissons à 5 €", "Boisson offerte avec un menu", "Pack week-end boissons + snacks"].map((x) => (
+                  <li key={x} className="flex items-center gap-2.5">
+                    <span className="h-1.5 w-1.5 flex-none rounded-full bg-green" />
+                    {x}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p className="mt-8 text-center font-display text-lg font-semibold">
+            Vous ne publiez pas juste une promo. Vous publiez la bonne offre.
+          </p>
+          <p className="mt-2 text-center text-[0.9375rem] text-ink-soft">
+            Vous gardez le contrôle. Lumivao prépare, vous validez.
+          </p>
         </div>
       </section>
 

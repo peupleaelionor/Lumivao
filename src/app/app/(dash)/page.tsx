@@ -3,33 +3,23 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBusiness, useOffers } from "@/lib/store/use-store";
-import { getDailyActions } from "@/lib/autopilot";
 import { getBusinessType } from "@/data/business-types";
+import { USEFUL_ACTIONS } from "@/data/useful-actions";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Textarea";
 import { OfferCard } from "@/components/offers/OfferCard";
 import { EmptyState } from "@/components/ui/States";
-
-const QUICK = [
-  { href: "/app/today", label: "Créer une offre" },
-  { href: "/app/menu", label: "Menu du jour" },
-  { href: "/app/products", label: "Ajouter produit" },
-  { href: "/app/customers", label: "Relancer clients" },
-  { href: "/app/flyers", label: "Voir QR code" },
-  { href: "/app/menu", label: "Afficher sur TV" },
-];
+import { ConseilDuJour } from "@/components/business/ConseilDuJour";
 
 export default function AppHome() {
   const router = useRouter();
   const business = useBusiness();
   const offers = useOffers();
-  const [intention, setIntention] = useState("");
+  const [situation, setSituation] = useState("");
   const [ready, setReady] = useState(false);
 
   useEffect(() => setReady(true), []);
-
-  // Pas encore de commerce → onboarding.
   useEffect(() => {
     if (ready && !business) router.replace("/app/onboarding");
   }, [ready, business, router]);
@@ -37,13 +27,12 @@ export default function AppHome() {
   if (!ready || !business) return null;
 
   const typeDef = getBusinessType(business.type);
-  const actions = getDailyActions(business.type);
-  const placeholder = `Ex : ${typeDef.examples[0]}`;
 
-  function go(text: string) {
+  function go(text: string, objective = "sell_today") {
     const t = text.trim();
-    if (!t) return;
-    router.push(`/app/today?intention=${encodeURIComponent(t)}`);
+    router.push(
+      `/app/today?objective=${objective}${t ? `&intention=${encodeURIComponent(t)}` : ""}`,
+    );
   }
 
   return (
@@ -53,55 +42,46 @@ export default function AppHome() {
         <h1 className="font-display text-2xl font-semibold">Votre commerce est prêt.</h1>
       </header>
 
-      {/* Zone principale : l'unique action centrale */}
+      {/* Entrée principale : la situation du commerçant */}
       <Card className="bg-surface">
         <h2 className="font-display text-xl font-semibold">
           Que voulez-vous vendre aujourd&apos;hui ?
         </h2>
+        <p className="mt-1 text-[0.9375rem] text-ink-soft">
+          Dites votre situation. Lumivao propose la meilleure offre.
+        </p>
         <div className="mt-4">
           <Textarea
-            value={intention}
-            onChange={(e) => setIntention(e.target.value)}
-            placeholder={placeholder}
+            value={situation}
+            onChange={(e) => setSituation(e.target.value)}
+            placeholder={`Ex : ${typeDef.examples[0]}  ·  « J'ai trop de boissons aujourd'hui »`}
           />
         </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {typeDef.examples.slice(0, 3).map((ex) => (
-            <button
-              key={ex}
-              onClick={() => setIntention(ex)}
-              className="rounded-full border border-line bg-cream px-3 py-1.5 text-xs text-ink-soft hover:border-ink hover:text-ink"
-            >
-              {ex}
-            </button>
-          ))}
-        </div>
-        <Button className="mt-4" block onClick={() => go(intention)} disabled={!intention.trim()}>
-          Créer l&apos;offre
+        <Button className="mt-3" block onClick={() => go(situation)} disabled={!situation.trim()}>
+          Trouver la bonne offre
         </Button>
       </Card>
 
-      {/* Autopilot : 3 actions du jour */}
-      <section>
-        <h2 className="mb-3 font-display text-lg font-semibold">Idées du jour</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {actions.map((a) => (
-            <Card key={a.label} interactive onClick={() => go(a.prompt)} className="bg-surface">
-              <p className="font-medium text-ink">{a.label}</p>
-              <p className="mt-1 text-sm text-ink-soft">{a.hint}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
+      {/* Conseil du jour — conseiller commercial invisible */}
+      <ConseilDuJour business={business} />
 
-      {/* Accès rapides */}
+      {/* Actions utiles */}
       <section>
-        <h2 className="mb-3 font-display text-lg font-semibold">Accès rapides</h2>
+        <h2 className="mb-1 font-display text-lg font-semibold">Actions utiles</h2>
+        <p className="mb-3 text-[0.9375rem] text-ink-soft">
+          Choisissez l&apos;action, nous préparons les supports.
+        </p>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          {QUICK.map((q) => (
-            <LinkButton key={q.label} href={q.href} variant="secondary" className="justify-start">
-              {q.label}
-            </LinkButton>
+          {USEFUL_ACTIONS.map((a) => (
+            <Card
+              key={a.label}
+              interactive
+              onClick={() => go(a.intention, a.objective)}
+              className="bg-surface"
+            >
+              <p className="font-medium text-ink">{a.label}</p>
+              <p className="mt-0.5 text-sm text-ink-soft">{a.hint}</p>
+            </Card>
           ))}
         </div>
       </section>

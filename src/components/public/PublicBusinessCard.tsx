@@ -1,7 +1,9 @@
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { QRBlock } from "@/components/qr/QRBlock";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { formatPrice } from "@/lib/utils";
+import { getBusinessType } from "@/data/business-types";
 import type { Business, Offer, Product } from "@/types";
 
 /** Carte vitrine publique — réutilisée par /public/[slug]. */
@@ -20,6 +22,7 @@ export function PublicBusinessCard({
     ? offer.whatsappMessage
     : `Bonjour ${business.name}, je vous contacte via votre vitrine LUMIVAO.`;
   const waLink = buildWhatsAppLink(business.whatsapp || business.phone || "", waMessage);
+  const typeDef = getBusinessType(business.type);
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-8">
@@ -29,13 +32,21 @@ export function PublicBusinessCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={business.logoUrl} alt="" className="h-full w-full rounded-lg object-cover" />
           ) : (
-            "🏪"
+            typeDef.emoji
           )}
         </div>
-        <div>
+        <div className="min-w-0">
           <h1 className="font-display text-xl font-semibold text-ink">{business.name}</h1>
-          {business.city && <p className="text-sm text-ink-soft">{business.city}</p>}
+          <p className="truncate text-sm text-ink-soft">
+            {typeDef.label}
+            {business.city ? ` · ${business.city}` : ""}
+          </p>
         </div>
+        {business.openingHours && (
+          <span className="ml-auto flex-none">
+            <Badge tone="published">Ouvert</Badge>
+          </span>
+        )}
       </header>
 
       {offer && (

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { aiOfferInputSchema } from "@/lib/validators";
-import { generateOffers } from "@/lib/ai/offers";
+import { advisorInputSchema } from "@/lib/validators";
+import { generateAdvice } from "@/lib/ai/advisor";
 
 export const runtime = "nodejs";
 
-// Petit garde-fou anti-abus (best-effort, en mémoire process).
+// Garde-fou anti-abus (best-effort, en mémoire process).
 const RATE = new Map<string, { count: number; ts: number }>();
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 20;
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
   }
 
-  const parsed = aiOfferInputSchema.safeParse(body);
+  const parsed = advisorInputSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Entrée invalide." },
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // generateOffers ne lève jamais : repli local garanti.
-  const result = await generateOffers(parsed.data);
+  // generateAdvice ne lève jamais : repli local garanti.
+  const result = await generateAdvice(parsed.data);
   return NextResponse.json(result);
 }
