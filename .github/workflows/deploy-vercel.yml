@@ -23,21 +23,36 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
+      - name: Check Vercel token
+        id: guard
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "Aucun VERCEL_TOKEN : déploiement ignoré (voir docs/DEPLOY.md)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.guard.outputs.skip == 'false'
 
       - uses: actions/setup-node@v4
+        if: steps.guard.outputs.skip == 'false'
         with:
           node-version: 20
           cache: npm
 
       - name: Install Vercel CLI
+        if: steps.guard.outputs.skip == 'false'
         run: npm install -g vercel@latest
 
       - name: Determine environment
         id: env
+        if: steps.guard.outputs.skip == 'false'
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "flag=--prod" >> "$GITHUB_OUTPUT"
@@ -48,10 +63,13 @@ jobs:
           fi
 
       - name: Pull Vercel env
-        run: vercel pull --yes --environment=${{ steps.env.outputs.target }} --token=${{ secrets.VERCEL_TOKEN }}
+        if: steps.guard.outputs.skip == 'false'
+        run: vercel pull --yes --environment=${{ steps.env.outputs.target }} --token=$VERCEL_TOKEN
 
       - name: Build
-        run: vercel build ${{ steps.env.outputs.flag }} --token=${{ secrets.VERCEL_TOKEN }}
+        if: steps.guard.outputs.skip == 'false'
+        run: vercel build ${{ steps.env.outputs.flag }} --token=$VERCEL_TOKEN
 
       - name: Deploy
-        run: vercel deploy --prebuilt ${{ steps.env.outputs.flag }} --token=${{ secrets.VERCEL_TOKEN }}
+        if: steps.guard.outputs.skip == 'false'
+        run: vercel deploy --prebuilt ${{ steps.env.outputs.flag }} --token=$VERCEL_TOKEN
