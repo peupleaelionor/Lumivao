@@ -1,17 +1,27 @@
 import { cn } from "@/lib/utils";
 
+/** Marque LUMIVAO : soleil/éclat orange (rayons radiants). */
 export function LogoMark({ className }: { className?: string }) {
+  const rays = Array.from({ length: 12 }, (_, i) => i * 30);
   return (
-    <svg viewBox="0 0 64 64" className={cn("h-7 w-7", className)} aria-hidden>
-      <rect x="6" y="6" width="52" height="52" rx="14" fill="#121212" />
-      <path
-        d="M23 18V40H38"
-        stroke="#F7F3EC"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <rect x="38" y="38" width="9" height="9" rx="2.5" fill="#18C26E" />
+    <svg viewBox="0 0 40 40" className={cn("h-8 w-8", className)} aria-hidden>
+      <g stroke="#F28C28" strokeWidth="2.4" strokeLinecap="round">
+        {rays.map((deg) => {
+          const r = (deg * Math.PI) / 180;
+          const inner = 9.5;
+          const outer = deg % 60 === 0 ? 17 : 14.5;
+          return (
+            <line
+              key={deg}
+              x1={20 + inner * Math.cos(r)}
+              y1={20 + inner * Math.sin(r)}
+              x2={20 + outer * Math.cos(r)}
+              y2={20 + outer * Math.sin(r)}
+            />
+          );
+        })}
+      </g>
+      <circle cx="20" cy="20" r="6.5" fill="#F28C28" />
     </svg>
   );
 }

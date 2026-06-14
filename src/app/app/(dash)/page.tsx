@@ -11,6 +11,26 @@ import { Textarea } from "@/components/ui/Textarea";
 import { OfferCard } from "@/components/offers/OfferCard";
 import { EmptyState } from "@/components/ui/States";
 import { ConseilDuJour } from "@/components/business/ConseilDuJour";
+import {
+  ChartIcon,
+  ChatIcon,
+  IconBubble,
+  PersonIcon,
+  SparkleIcon,
+  StackIcon,
+  TagIcon,
+  TvIcon,
+} from "@/components/ui/Icons";
+import type { ActionIcon } from "@/data/useful-actions";
+
+const ACTION_ICONS: Record<ActionIcon, React.ReactNode> = {
+  tag: <TagIcon />,
+  stack: <StackIcon />,
+  chart: <ChartIcon />,
+  person: <PersonIcon />,
+  chat: <ChatIcon />,
+  tv: <TvIcon />,
+};
 
 export default function AppHome() {
   const router = useRouter();
@@ -33,6 +53,14 @@ export default function AppHome() {
     router.push(
       `/app/today?objective=${objective}${t ? `&intention=${encodeURIComponent(t)}` : ""}`,
     );
+  }
+
+  function runAction(action: { icon: string; intention: string; objective: string }) {
+    if (action.icon === "tv") {
+      router.push(`/app/tv/${business!.id}`);
+      return;
+    }
+    go(action.intention, action.objective);
   }
 
   return (
@@ -58,8 +86,12 @@ export default function AppHome() {
           />
         </div>
         <Button className="mt-3" block onClick={() => go(situation)} disabled={!situation.trim()}>
-          Trouver la bonne offre
+          Trouver les meilleures offres
         </Button>
+        <p className="mt-3 flex items-center gap-2 text-[0.9375rem] text-ink-soft">
+          <SparkleIcon className="h-4 w-4 flex-none text-orange" />
+          Une situation entre. 3 offres précises sortent.
+        </p>
       </Card>
 
       {/* Conseil du jour — conseiller commercial invisible */}
@@ -73,15 +105,16 @@ export default function AppHome() {
         </p>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {USEFUL_ACTIONS.map((a) => (
-            <Card
+            <button
               key={a.label}
-              interactive
-              onClick={() => go(a.intention, a.objective)}
-              className="bg-surface"
+              onClick={() => runAction(a)}
+              className="flex items-center gap-2.5 rounded-lg border border-line bg-surface p-3 text-left transition hover:-translate-y-0.5 hover:shadow-soft"
             >
-              <p className="font-medium text-ink">{a.label}</p>
-              <p className="mt-0.5 text-sm text-ink-soft">{a.hint}</p>
-            </Card>
+              <IconBubble tone={a.tone} className="h-9 w-9">
+                {ACTION_ICONS[a.icon]}
+              </IconBubble>
+              <span className="text-sm font-medium leading-tight text-ink">{a.label}</span>
+            </button>
           ))}
         </div>
       </section>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
+import { BellIcon } from "@/components/ui/Icons";
 import { MobileNav } from "./MobileNav";
 
 const DESKTOP_LINKS = [
@@ -19,13 +20,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/app" aria-label="Accueil LUMIVAO">
             <Logo />
           </Link>
-          <nav className="hidden items-center gap-6 md:flex">
-            {DESKTOP_LINKS.map((l) => (
-              <Link key={l.href} href={l.href} className="text-[0.9375rem] text-ink-soft hover:text-ink">
-                {l.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="flex items-center gap-4">
+            <nav className="hidden items-center gap-6 md:flex">
+              {DESKTOP_LINKS.map((l) => (
+                <Link key={l.href} href={l.href} className="text-[0.9375rem] text-ink-soft hover:text-ink">
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+            <button aria-label="Notifications" className="text-ink-soft hover:text-ink">
+              <BellIcon />
+            </button>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-content px-4 py-6">{children}</main>

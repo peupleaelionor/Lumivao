@@ -5,12 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useBusiness, useProducts } from "@/lib/store/use-store";
 import { saveOffer } from "@/lib/store/local-store";
 import { getBusinessType } from "@/data/business-types";
-import { STRATEGY_LABEL } from "@/lib/offers/offer-score";
-import { buildWhatsAppLink } from "@/lib/whatsapp";
-import { cn } from "@/lib/utils";
 import type {
   AdvisorObjective,
-  EngineBadge,
   EngineOffer,
   EngineStrategy,
   OfferEngineResponse,
@@ -19,16 +15,9 @@ import type {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Textarea";
-import { Badge } from "@/components/ui/Badge";
-import { LoadingState, SuccessMessage } from "@/components/ui/States";
-import { FlyerPreview } from "@/components/flyers/FlyerPreview";
-import { QRBlock } from "@/components/qr/QRBlock";
-
-const BADGE_TONE: Record<EngineBadge, "published" | "new" | "draft"> = {
-  Recommandée: "published",
-  Solide: "new",
-  "À ajuster": "draft",
-};
+import { LoadingState } from "@/components/ui/States";
+import { OfferEngineCard } from "@/components/offers/OfferEngineCard";
+import { OfferReady } from "@/components/offers/OfferReady";
 
 const STRATEGY_TONE: Record<EngineStrategy, OfferToneKey> = {
   marge_protegee: "prudent",
@@ -62,7 +51,6 @@ function TodayInner() {
   const [result, setResult] = useState<OfferEngineResponse | null>(null);
   const [selected, setSelected] = useState<EngineOffer | null>(null);
   const [published, setPublished] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const appUrl = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
   const publicUrl = business ? `${appUrl}/app/public/${business.slug}` : "";
@@ -142,7 +130,6 @@ function TodayInner() {
   }
 
   const typeDef = getBusinessType(business.type);
-  const waLink = selected ? buildWhatsAppLink(business.whatsapp || "", selected.whatsappMessage) : "";
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -172,7 +159,7 @@ function TodayInner() {
 
       {/* 3 offres précises */}
       {result && !selected && (
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-4">
           <div>
             <h2 className="font-display text-lg font-semibold">
               Voici les meilleures offres pour aujourd&apos;hui
@@ -181,135 +168,30 @@ function TodayInner() {
               Choisissez une option. Lumivao prépare les supports.
             </p>
           </div>
-          {result.offers.map((o, i) => {
-            const recommended = i + 1 === result.recommendedOfferRank;
-            return (
-              <Card
-                key={o.strategy}
-                interactive
-                onClick={() => setSelected(o)}
-                className={cn("bg-surface", recommended && "border-green/40")}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                    {STRATEGY_LABEL[o.strategy]}
-                  </span>
-                  <Badge tone={recommended ? "published" : BADGE_TONE[o.badge]}>
-                    {recommended
-                      ? "Meilleure option aujourd'hui"
-                      : o.badge === "Recommandée"
-                        ? "Solide"
-                        : o.badge}
-                  </Badge>
-                </div>
-                <h3 className="mt-1.5 font-display font-semibold leading-snug">{o.name}</h3>
-                <div className="mt-2 grid gap-1 text-[0.8125rem] text-ink-soft">
-                  <p className="text-base font-semibold text-orange-dense">{o.price}</p>
-                  <p>🎯 {o.target}</p>
-                  <p>📣 {o.channel}{o.bestTime ? ` · ${o.bestTime}` : ""}</p>
-                  {o.reason && <p>💬 {o.reason}</p>}
-                </div>
-                <Button className="mt-3" variant={recommended ? "primary" : "secondary"} block>
-                  Préparer cette offre
-                </Button>
-              </Card>
-            );
-          })}
+          {result.offers.map((o, i) => (
+            <OfferEngineCard
+              key={o.strategy}
+              offer={o}
+              recommended={i + 1 === result.recommendedOfferRank}
+              onPrepare={() => setSelected(o)}
+            />
+          ))}
         </section>
       )}
 
       {/* Supports de l'offre choisie */}
       {selected && (
-        <section className="flex flex-col gap-5">
-          {published ? (
-            <SuccessMessage>Votre offre est prête.</SuccessMessage>
-          ) : (
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold">Vos supports</h2>
-              <button onClick={() => setSelected(null)} className="text-sm text-ink-soft hover:text-ink">
-                Changer d&apos;offre
-              </button>
-            </div>
-          )}
-
-          {selected.marginAdvice && (
-            <p className="rounded bg-cream px-3 py-2 text-sm text-ink-soft">
-              💡 {selected.marginAdvice}
-            </p>
-          )}
-
-          <FlyerPreview
-            data={{
-              businessName: business.name,
-              headline: selected.flyerHeadline,
-              description: selected.reason,
-              price: selected.price,
-              cta: selected.cta,
-              qrData: publicUrl,
-            }}
-            format="square"
-          />
-
-          <Card className="bg-surface">
-            <h3 className="font-medium">Message WhatsApp</h3>
-            <p className="mt-2 whitespace-pre-line rounded border border-line bg-cream p-3 text-sm">
-              {selected.whatsappMessage}
-            </p>
-            <div className="mt-3 flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  navigator.clipboard.writeText(selected.whatsappMessage);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? "Copié ✓" : "Copier le message"}
-              </Button>
-              <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex-1">
-                <Button variant="accent" block>
-                  Partager sur WhatsApp
-                </Button>
-              </a>
-            </div>
-          </Card>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="flex flex-col items-center gap-3 bg-surface">
-              <h3 className="self-start font-medium">QR code commande</h3>
-              <QRBlock data={publicUrl} label="Scanner pour commander" size={180} />
-            </Card>
-            <Card className="flex flex-col gap-3 bg-surface">
-              <h3 className="font-medium">Mini-vitrine</h3>
-              <p className="break-all text-sm text-ink-soft">{publicUrl}</p>
-              <div className="mt-auto flex flex-col gap-2">
-                <Button variant="secondary" onClick={() => navigator.clipboard.writeText(publicUrl)}>
-                  Copier le lien
-                </Button>
-                <a href={`/app/public/${business.slug}`} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" block>
-                    Ouvrir la page
-                  </Button>
-                </a>
-              </div>
-            </Card>
-          </div>
-
-          {!published ? (
-            <Button block onClick={() => publish(selected)}>
-              Publier maintenant
-            </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button variant="secondary" block onClick={() => router.push("/app/flyers")}>
-                Voir mes offres
-              </Button>
-              <Button block onClick={() => router.push(`/app/tv/${business.id}`)}>
-                Afficher sur TV
-              </Button>
-            </div>
-          )}
-        </section>
+        <OfferReady
+          business={business}
+          offer={selected}
+          publicUrl={publicUrl}
+          published={published}
+          onPublish={() => publish(selected)}
+          onModify={() => {
+            setSelected(null);
+            setPublished(false);
+          }}
+        />
       )}
     </div>
   );

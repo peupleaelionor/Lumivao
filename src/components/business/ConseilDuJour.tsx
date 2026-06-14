@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import type { AdvisorResponse, Business, TimeOfDay } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/States";
+import { BulbIcon, IconBubble } from "@/components/ui/Icons";
 
 function currentTimeOfDay(): TimeOfDay {
   const h = new Date().getHours();
@@ -56,16 +56,20 @@ export function ConseilDuJour({ business }: { business: Business }) {
   if (loading) {
     return (
       <Card className="bg-surface">
-        <Skeleton className="h-4 w-28" />
-        <Skeleton className="mt-3 h-5 w-full" />
-        <Skeleton className="mt-2 h-5 w-2/3" />
-        <Skeleton className="mt-4 h-11 w-full" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-11 w-11 rounded-full" />
+          <div className="flex-1">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="mt-2 h-4 w-3/4" />
+          </div>
+        </div>
       </Card>
     );
   }
 
   if (!data) return null;
   const action = data.actions[0];
+  const advice = data.diagnosis.mainOpportunity || data.diagnosis.summary;
 
   function prepare() {
     if (!action) return;
@@ -74,38 +78,20 @@ export function ConseilDuJour({ business }: { business: Business }) {
   }
 
   return (
-    <Card className="border-green/30 bg-green-tint/30">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-green-dense">
-          Conseil du jour
-        </span>
-        {data.diagnosis.recommendedFocus && (
-          <Badge tone="published">{data.diagnosis.recommendedFocus}</Badge>
-        )}
-      </div>
-
-      <p className="mt-2 font-display text-[1.0625rem] font-semibold leading-snug">
-        {data.diagnosis.summary || data.diagnosis.mainOpportunity}
-      </p>
-
-      {action && (
-        <div className="mt-3 rounded border border-line bg-cream p-3 text-sm">
-          <p className="font-medium text-ink">{action.title}</p>
-          <p className="mt-0.5 text-ink-soft">{action.offer}</p>
-          <ul className="mt-2 grid gap-1 text-[0.8125rem] text-ink-soft">
-            <li>🎯 Cible : {action.targetCustomer}</li>
-            <li>📣 {action.bestChannel}{action.bestTime ? ` · ${action.bestTime}` : ""}</li>
-            {action.marginAdvice && <li>💡 {action.marginAdvice}</li>}
-          </ul>
+    <Card className="bg-surface">
+      <div className="flex items-center gap-4">
+        <IconBubble tone="green">
+          <BulbIcon />
+        </IconBubble>
+        <div className="min-w-0 flex-1">
+          <p className="font-display font-semibold text-ink">Conseil du jour</p>
+          <p className="mt-0.5 text-[0.9375rem] leading-snug text-ink-soft">{advice}</p>
         </div>
-      )}
-
-      <Button className="mt-4" block onClick={prepare}>
-        Préparer cette action
-      </Button>
-      <p className="mt-2 text-center text-xs text-ink-soft">
-        Vous validez toujours avant de publier.
-      </p>
+        <Button variant="accent" size="sm" className="flex-none" onClick={prepare}>
+          Préparer cette action
+        </Button>
+      </div>
+      <p className="mt-3 text-xs text-ink-soft">Vous validez toujours avant de publier.</p>
     </Card>
   );
 }
